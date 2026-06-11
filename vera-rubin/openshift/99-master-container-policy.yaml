@@ -11,8 +11,7 @@ spec:
     storage:
       files:
         - path: /etc/containers/policy.json
-          mode: 420
           overwrite: true
+          mode: 420
           contents:
-            compression: gzip
-            source: data:;base64,H4sIAAAAAAAC/4zOMQ7CMAwF0N2n+PIMF8jWc6AOUWKgApwocYeqyt1RI4gY8eDBsv77OwEc5erXp7HDhQBg7xtg27KwAy9aJaxFphAk26Sb3Re9cX9rBMynI8aK15pTscruk8ExhYeUc/TySjrOAA/sF/wb/cLHzKNGo0bvAAAA//8mJjls0QAAAA==
+            source: data:;base64,ewogICAgICAiZGVmYXVsdCI6IFsKICAgICAgICB7CiAgICAgICAgICAidHlwZSI6ICJpbnNlY3VyZUFjY2VwdEFueXRoaW5nIgogICAgICAgIH0KICAgICAgXSwKICAgICAgInRyYW5zcG9ydHMiOiB7CiAgICAgICAgImRvY2tlci1kYWVtb24iOiB7CiAgICAgICAgICAiIjogW3sidHlwZSI6ICJpbnNlY3VyZUFjY2VwdEFueXRoaW5nIn1dCiAgICAgICAgfQogICAgICB9Cn0K

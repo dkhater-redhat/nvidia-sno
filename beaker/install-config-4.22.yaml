@@ -2,13 +2,13 @@ apiVersion: v1
 baseDomain: khw.eng.rdu2.dc.redhat.com
 compute:
 - name: worker
-  replicas: 0 
+  replicas: 0
 controlPlane:
   name: master
-  replicas: 1 
+  replicas: 1
 metadata:
   name: ampere-mtsnow-altra-04
-networking: 
+networking:
   clusterNetwork:
   - cidr: 10.128.0.0/14
     hostPrefix: 23
@@ -23,7 +23,5 @@ bootstrapInPlace:
   installationDisk: /dev/nvme0n1
 osImageStream: "rhel-10"
 featureSet: TechPreviewNoUpgrade
-pullSecret: |
-  ${PULL_SECRET}
-sshKey: |
-  ${SSH_KEY}
+sshKey: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN7zgvPt+AVZF06sA0jRY6MByNyytlGsMn6z+KMjjX7/ dkhater@redhat.com-sno'
+pullSecret: '<your-pull-secret-here>'

@@ -1,10 +1,19 @@
-.openshift_install.log
-.openshift_install_state.json
-bootstrap-in-place-for-live-iso.ign
-install-config.yaml
-ocp/
-openshift-install
-pull-secret.json
-rhcos-10.2.20260423-0102-live-iso.aarch64.iso
-ssh.pub
-tpm.ign
+  # Large ISO and archive files
+  *.iso
+  *.ociarchive
+
+  # Generated ignition files
+  *.ign
+  bootstrap-in-place-for-live-iso.ign*
+  worker.ign
+
+  # Installer state and metadata
+  .openshift_install*
+  metadata.json
+  auth/
+
+  # Binaries
+  openshift-install
+                                                            
+  # Generated manifests (keep custom MachineConfigs in openshift/ as examples)
+  manifests/

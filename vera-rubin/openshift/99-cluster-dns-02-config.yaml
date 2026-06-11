@@ -7,5 +7,8 @@ spec:
     policy: Sequential
     upstreams:
     - type: Network
-      address: 10.6.6.17
+      address: 10.78.214.62
+      port: 53
+    - type: Network
+      address: 103.247.36.36
       port: 53

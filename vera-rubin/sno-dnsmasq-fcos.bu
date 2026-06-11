@@ -18,12 +18,12 @@ storage:
       overwrite: true
       contents:
         inline: |
-          local=/ampere-mtsnow-altra-04.khw.eng.rdu2.dc.redhat.com/
-          address=/api.ampere-mtsnow-altra-04.khw.eng.rdu2.dc.redhat.com/10.6.6.17
-          address=/api-int.ampere-mtsnow-altra-04.khw.eng.rdu2.dc.redhat.com/10.6.6.17
-          address=/apps.ampere-mtsnow-altra-04.khw.eng.rdu2.dc.redhat.com/10.6.6.17
+          local=/vera-rubin.nvidia-preview/
+          address=/api.vera-rubin.nvidia-preview/10.78.214.40
+          address=/api-int.vera-rubin.nvidia-preview/10.78.214.40
+          address=/apps.vera-rubin.nvidia-preview/10.78.214.40
           listen-address=127.0.0.1
-          listen-address=10.6.6.17
+          listen-address=10.78.214.40
           cache-size=1000
 
     - path: /etc/NetworkManager/conf.d/dnsmasq.conf
@@ -45,4 +45,4 @@ systemd:
   units:
     - name: dnsmasq.service
       enabled: false
-      mask: true
+      mask: false

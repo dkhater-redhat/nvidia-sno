@@ -1,0 +1,28 @@
+apiVersion: v1
+baseDomain: nvidia-preview
+compute:
+- name: worker
+  replicas: 0
+controlPlane:
+  name: master
+  replicas: 1
+metadata:
+  name: vera-rubin
+networking:
+  clusterNetwork:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  machineNetwork:
+  - cidr: 10.78.214.0/27
+  networkType: OVNKubernetes
+  serviceNetwork:
+  - 172.30.0.0/16
+platform:
+  none: {}
+bootstrapInPlace:
+  installationDisk: /dev/disk/by-id/nvme-eui.3755533059c001930025384700000001
+osImageStream: "rhel-10"
+featureSet: TechPreviewNoUpgrade
+pullSecret: '<your-pull-secret-here>'
+sshKey: |
+  ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDgBv89yZuWD1AfOi+3CGI7FWawpwYQVrxLCjfxPnP7KjEGGAHGsorce5XGNu1W57ND8HrdLyQf4SLfHAwVyRvRfIf8NzakUuxR4khHCpxE+F8ByTyg23Y17DkfBM/RCXcdMU1vvDkfCdsVMOY8KKhLL412560KfxQhQBKsCmssMZQ4Ii5b18cJfbwk+JnNC0fRiV/h2qrOsRQ7XvJynHHxMfqfih3BLnVo83FSf3G7T9LwpS7BQK4BsO14ahztMXxkU7j+ZdRd3+gUK3L9E0Y/fdtrMXgnG6OphkFEGTY7hlpV9Ppr7t5mDDl6LPMDWpWaZ0xz61IqKbrjXVPv63xF ravanelli@renatas-air.br.ibm.com

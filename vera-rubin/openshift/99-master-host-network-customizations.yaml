@@ -14,27 +14,25 @@ spec:
           passwordHash: "$6$jamyHU6tcWovxP.e$rasKzY7tDn.LlazCF6Z4osY86aaXGEFOnkDSClPCw1B/DzPn2knv/kHCwncynti2r3k8MSLwcEsyEwqkDwZd8/"
     storage:
       files:
+        - path: /etc/NetworkManager/system-connections/enP13s20f0np0.nmconnection
+          overwrite: true
+          mode: 384
+          contents:
+            compression: gzip
+            source: data:;base64,H4sICCQjKGoAA2VuUDEzczIwZjBucDAubm1jb25uZWN0aW9uAF2NzQrCMBCE7/suxvzRCpJ38F56WJutBuymJFulb29BkSLMafhmvm7IzDRIytxDioH4Yly1etQ8a5B1pkByp8IkkFiojDjQgXGiPxQXyd+vIGUhgC7NT9/DtO1zDBPygg/AGAvVSjUYrdqTssYrr4+2hRsKvXDd9c5B5D3Y2LPRTlnfKtds+TianyOmitcHRXgDjI/qldYAAAA=
         - path: /etc/NetworkManager/dnsmasq.d/ocp-sno.conf
           overwrite: true
           mode: 420
           contents:
             compression: gzip
-            source: data:;base64,H4sIAAAAAAAC/6zMzarCMBBH8X3fZf6dlEu76sMMyXAbzBeZSMGnd6UgrkTXh/NL1UvaZ8lNu1IeVupJkkYX4j9cjhNa/tHDdUHw6BoOGfA1z5OE0NVsn6VFfP47xooVbnuBKJbxK6zZV1KKNrTQA3TLBgbDvYXn4cUfShZvujtmnu4BAAD//5RCVkdcAQAA
-
+            source: data:;base64,H4sICCwjKGoAA29jcC1zbm8uY29uZgCdjc0KAjEMhO99l6Y/u2y97MFHiW3EQKmlrV3w6e1FXBFBzOQ0Mx8Trx7jqjoVlOV24gSpc2CUuVBn2pTAEArVuirMDN97RoM7gDUzzPqNkZzaH1yuv0KRa6Mkn6yxDvSQ+Qj2kEd/IVn5TsPXWlQqY27XWezLm8DODqZlvDhzbFTkcZx4ACrj5Ok9AQAA
         - path: /etc/NetworkManager/conf.d/dnsmasq.conf
           overwrite: true
           mode: 420
           contents:
             source: data:,%5Bmain%5D%0Adns%3Ddnsmasq%0A
-
         - path: /etc/ssh/sshd_config.d/01-password-auth.conf
           overwrite: true
           mode: 420
           contents:
             source: data:,PasswordAuthentication%20yes%0A
-
-    systemd:
-      units:
-        - name: dnsmasq.service
-          enabled: false
-          mask: true

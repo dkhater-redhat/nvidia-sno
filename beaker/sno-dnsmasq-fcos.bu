@@ -1,0 +1,85 @@
+  variant: fcos
+  version: 1.5.0
+  
+  ignition:
+    config:
+      merge:
+        - local: bootstrap-in-place-for-live-iso.ign
+  
+  passwd:
+    users:
+      - name: core
+        password_hash: "$6$jamyHU6tcWovxP.e$rasKzY7tDn.LlazCF6Z4osY86aaXGEFOnkDSClPCw1B/DzPn2knv/kHCwncynti2r3k8MSLwcEsyEwqkDwZd8/"
+  
+  storage:
+    files:
+      - path: /etc/NetworkManager/dnsmasq.d/ocp-sno.conf
+        mode: 0644
+        overwrite: true
+        contents:
+          inline: |
+            local=/ampere-mtsnow-altra-04.khw.eng.rdu2.dc.redhat.com/
+            address=/api.ampere-mtsnow-altra-04.khw.eng.rdu2.dc.redhat.com/10.6.6.17
+            address=/api-int.ampere-mtsnow-altra-04.khw.eng.rdu2.dc.redhat.com/10.6.6.17
+            address=/apps.ampere-mtsnow-altra-04.khw.eng.rdu2.dc.redhat.com/10.6.6.17
+            listen-address=127.0.0.1
+            listen-address=10.6.6.17
+            cache-size=1000
+  
+      - path: /etc/NetworkManager/conf.d/dnsmasq.conf
+        mode: 0644
+        overwrite: true
+        contents:
+          inline: |
+            [main]
+            dns=dnsmasq
+  
+      - path: /etc/ssh/sshd_config.d/01-password-auth.conf
+        mode: 0644
+        overwrite: true
+        contents:
+          inline: |
+            PasswordAuthentication yes
+
+      - path: /opt/openshift/openshift/99_os-layer-custom.yaml
+        mode: 0644
+        overwrite: true
+        contents:
+          inline: |
+            apiVersion: machineconfiguration.openshift.io/v1
+            kind: MachineConfig
+            metadata:
+              labels:
+                machineconfiguration.openshift.io/role: master
+              name: os-layer-custom
+            spec:
+              osImageURL: quay.io/openshift-release-dev/ocp-v4.0-art-dev:4.22-10.2-ocp4nv-preview-202605082215-node-image
+
+      - path: /opt/openshift/openshift/99_master-container-policy.yaml
+        mode: 0644
+        overwrite: true
+        contents:
+          inline: |
+            apiVersion: machineconfiguration.openshift.io/v1
+            kind: MachineConfig
+            metadata:
+              labels:
+                machineconfiguration.openshift.io/role: master
+              name: 99-master-container-policy
+            spec:
+              config:
+                ignition:
+                  version: 3.2.0
+                storage:
+                  files:
+                  - contents:
+                      source: data:text/plain;charset=utf-8;base64,ewogICAgICAiZGVmYXVsdCI6IFsKICAgICAgICAgIHsKICAgICAgICAgICAgICAidHlwZSI6ICJpbnNlY3VyZUFjY2VwdEFueXRoaW5nIgogICAgICAgICAgfQogICAgICBdLAogICAgICAidHJhbnNwb3J0cyI6CiAgICAgICAgICB7CiAgICAgICAgICAgICAgImRvY2tlci1kYWVtb24iOgogICAgICAgICAgICAgICAgICB7CiAgICAgICAgICAgICAgICAgICAgICAiIjogW3sidHlwZSI6Imluc2VjdXJlQWNjZXB0QW55dGhpbmcifV0KICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgfQogIH0K
+                    mode: 0644
+                    overwrite: true
+                    path: /etc/containers/policy.json
+
+  systemd:
+    units:
+      - name: dnsmasq.service
+        enabled: false
+        mask: true
