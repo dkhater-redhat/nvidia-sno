@@ -5,4 +5,4 @@ metadata:
     machineconfiguration.openshift.io/role: master
   name: os-layer-custom
 spec:
-  osImageURL: quay.io/openshift-release-dev/ocp-v4.0-art-dev:4.22-10.2-ocp4nv-preview-202605082215-node-image
+  osImageURL: quay.io/ravanelli/nvidia/node-image:4.22-10.2-ocp4nv-preview-202605082215-node-image

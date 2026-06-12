@@ -10,21 +10,48 @@ passwd:
   users:
     - name: core
       password_hash: "$6$jamyHU6tcWovxP.e$rasKzY7tDn.LlazCF6Z4osY86aaXGEFOnkDSClPCw1B/DzPn2knv/kHCwncynti2r3k8MSLwcEsyEwqkDwZd8/"
+      ssh_authorized_keys:
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN7zgvPt+AVZF06sA0jRY6MByNyytlGsMn6z+KMjjX7/ dkhater@redhat.com-sno
+        - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDgBv89yZuWD1AfOi+3CGI7FWawpwYQVrxLCjfxPnP7KjEGGAHGsorce5XGNu1W57ND8HrdLyQf4SLfHAwVyRvRfIf8NzakUuxR4khHCpxE+F8ByTyg23Y17DkfBM/RCXcdMU1vvDkfCdsVMOY8KKhLL412560KfxQhQBKsCmssMZQ4Ii5b18cJfbwk+JnNC0fRiV/h2qrOsRQ7XvJynHHxMfqfih3BLnVo83FSf3G7T9LwpS7BQK4BsO14ahztMXxkU7j+ZdRd3+gUK3L9E0Y/fdtrMXgnG6OphkFEGTY7hlpV9Ppr7t5mDDl6LPMDWpWaZ0xz61IqKbrjXVPv63xF ravanelli@renatas-air.br.ibm.com
 
 storage:
   files:
+    - path: /etc/hostname
+      mode: 0644
+      overwrite: true
+      contents:
+        inline: vera-rubin.nvidia.local
+    - path: /etc/NetworkManager/system-connections/enP13s20f0np0.nmconnection
+      mode: 0600
+      overwrite: true
+      contents:
+        inline: |
+          [connection]
+          id=enP13s20f0np0
+          type=ethernet
+          interface-name=enP13s20f0np0
+          autoconnect=true
+
+          [ipv4]
+          method=manual
+          addresses=10.78.214.40/27
+          gateway=10.78.214.33
+          dns=10.78.214.62;103.247.36.36
+
     - path: /etc/NetworkManager/dnsmasq.d/ocp-sno.conf
       mode: 0644
       overwrite: true
       contents:
         inline: |
-          local=/ampere-mtsnow-altra-04.khw.eng.rdu2.dc.redhat.com/
-          address=/api.ampere-mtsnow-altra-04.khw.eng.rdu2.dc.redhat.com/10.6.6.17
-          address=/api-int.ampere-mtsnow-altra-04.khw.eng.rdu2.dc.redhat.com/10.6.6.17
-          address=/apps.ampere-mtsnow-altra-04.khw.eng.rdu2.dc.redhat.com/10.6.6.17
+          local=/vera-rubin.nvidia.local/
+          address=/api.vera-rubin.nvidia.local/10.78.214.40
+          address=/api-int.vera-rubin.nvidia.local/10.78.214.40
+          address=/apps.vera-rubin.nvidia.local/10.78.214.40
           listen-address=127.0.0.1
-          listen-address=10.6.6.17
+          listen-address=10.78.214.40
           cache-size=1000
+          server=10.78.214.62
+          server=8.8.8.8
 
     - path: /etc/NetworkManager/conf.d/dnsmasq.conf
       mode: 0644

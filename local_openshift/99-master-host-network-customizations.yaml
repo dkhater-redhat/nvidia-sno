@@ -14,12 +14,28 @@ spec:
           passwordHash: "$6$jamyHU6tcWovxP.e$rasKzY7tDn.LlazCF6Z4osY86aaXGEFOnkDSClPCw1B/DzPn2knv/kHCwncynti2r3k8MSLwcEsyEwqkDwZd8/"
     storage:
       files:
+
+
+        -  path: /etc/hostname
+           overwrite: true
+           mode: 420
+           contents:
+             source: data:,vera-rubin.nvidia.local
+
+
+        - path: /etc/NetworkManager/system-connections/enP13s20f0np0.nmconnection
+          overwrite: true
+          mode:  0600
+          contents:
+            compression: gzip
+            source: data:;base64,H4sIAAAAAAAC/1zMPWrEMBBH8X7uEkVf2IGgO6Q3Lgbr71gQj4w0zuLbb7OF2fbx401LFcGipcpMJSfIjwvd29XKYUmvAwm6oQmUiijaygs+hHe8UT61vl5J2wmiqRz/caYdutWcdpaT/4hzbugdPTlrxi/jXTTRfvqRflnx4OvWQ6Asdzj4b2eD8XE0YTBhoGcAAAD//xWJTwC+AAAA
+
         - path: /etc/NetworkManager/dnsmasq.d/ocp-sno.conf
           overwrite: true
           mode: 420
           contents:
             compression: gzip
-            source: data:;base64,H4sIAAAAAAAC/6zMzarCMBBH8X3fZf6dlEu76sMMyXAbzBeZSMGnd6UgrkTXh/NL1UvaZ8lNu1IeVupJkkYX4j9cjhNa/tHDdUHw6BoOGfA1z5OE0NVsn6VFfP47xooVbnuBKJbxK6zZV1KKNrTQA3TLBgbDvYXn4cUfShZvujtmnu4BAAD//5RCVkdcAQAA
+            source: data:;base64,H4sIAAAAAAAC/5TLwQrCMAzG8XvfpWlahtulDxPbgIFSRzJ78OmFwWAigpJbvv+v3Qu1HAYreX1cpUMfUoVgH4KjWpXNcqBV4FsVEeYFUpxgwjfhpW9/q9V+I01s4+4PGdMMCAjxYzijQuXG3uTJOSKiM9bBemou6fgtsJ97BQAA///XxOWQIwEAAA==
 
         - path: /etc/NetworkManager/conf.d/dnsmasq.conf
           overwrite: true
