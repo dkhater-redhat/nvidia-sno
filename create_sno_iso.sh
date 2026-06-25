@@ -8,7 +8,7 @@ VERSION="${VERSION:-4.22}"
 case "${VERSION}" in
   "4.22")
     OCP_VERSION="4.22.0-rc.2"
-    RHCOS_BUILD="10.2.20260423-0102"
+    RHCOS_BUILD="10.2.20260617-0101"
     INSTALLER_URL="https://mirror.openshift.com/pub/openshift-v4/aarch64/clients/ocp/${OCP_VERSION}/openshift-install-linux.tar.gz"
     ;;
   "5.0")

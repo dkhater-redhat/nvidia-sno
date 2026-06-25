@@ -14,7 +14,7 @@ The project automates the creation of a customized RHCOS live ISO for a single n
 
 | Version | OCP Release | RHCOS Build | Custom Image Tag |
 |---------|-------------|-------------|------------------|
-| 4.22 (default) | 4.22.0-rc.2 | 10.2.20260423-0102 | 4.22-10.2-ocp4nv-preview-202605082215-node-image |
+| 4.22 (default) | 4.22.0-rc.2 | 10.2.20260423-0102 | 4.22-10.2-ocp4nv-preview-202606222115-node-image |
 | 5.0 | Latest dev-preview | 10.2.20260617-0101 | 5.0-10.2-ocp4nv-202606231810-node-image |
 
 ### RHEL-10 Configuration
