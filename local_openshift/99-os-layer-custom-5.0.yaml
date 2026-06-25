@@ -1,0 +1,8 @@
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  labels:
+    machineconfiguration.openshift.io/role: master
+  name: os-layer-custom
+spec:
+  osImageURL: quay.io/ravanelli/nvidia/node-image:5.0-10.2-ocp4nv-202606231810-node-image

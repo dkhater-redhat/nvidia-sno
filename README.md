@@ -4,11 +4,18 @@ This repository contains automation scripts to create a bootable live ISO for Re
 
 ## Overview
 
-The project automates the creation of a customized RHCOS live ISO that includes:
-- **OpenShift Container Platform** 4.22.0-rc.2
-- **RHCOS** build 10.2.20260423-0102 (RHEL-10.02 based)
+The project automates the creation of a customized RHCOS live ISO for a single node that includes:
+- **OpenShift Container Platform** 4.22 or 5.0 (configurable via VERSION variable)
+- **RHCOS** RHEL-10.2 based builds
 - **Container policy** and DNS configuration via Butane
 - **Single Node OpenShift** bootstrap configuration
+
+### Supported OCP Versions
+
+| Version | OCP Release | RHCOS Build | Custom Image Tag |
+|---------|-------------|-------------|------------------|
+| 4.22 (default) | 4.22.0-rc.2 | 10.2.20260423-0102 | 4.22-10.2-ocp4nv-preview-202605082215-node-image |
+| 5.0 | Latest dev-preview | 10.2.20260617-0101 | 5.0-10.2-ocp4nv-202606231810-node-image |
 
 ### RHEL-10 Configuration
 
@@ -21,9 +28,13 @@ featureSet: TechPreviewNoUpgrade
 
 ### Custom OS Image
 
-A custom node image is specified via `local_openshift/99-os-layer-custom.yaml`:
-Instead of doing the off-cluster layering to use the right image,  we are already doing it as part of Day 0
+A custom node image is specified via version-specific manifests in `local_openshift/`:
+- `99-os-layer-custom-4.22.yaml` - For OCP 4.22
+- `99-os-layer-custom-5.0.yaml` - For OCP 5.0
 
+Instead of doing the off-cluster layering to use the right image, we are already doing it as part of Day 0.
+
+Example for OCP 4.22:
 ```yaml
 apiVersion: machineconfiguration.openshift.io/v1
 kind: MachineConfig
@@ -33,6 +44,18 @@ metadata:
   name: os-layer-custom
 spec:
   osImageURL: quay.io/ravanelli/nvidia/node-image:4.22-10.2-ocp4nv-preview-202605082215-node-image
+```
+
+Example for OCP 5.0:
+```yaml
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  labels:
+    machineconfiguration.openshift.io/role: master
+  name: os-layer-custom
+spec:
+  osImageURL: quay.io/ravanelli/nvidia/node-image:5.0-10.2-ocp4nv-202606231810-node-image
 ```
 
 **Note:** This uses a personal repository (`quay.io/ravanelli/nvidia`) because the custom image is not yet part of the official OCP payload, and OpenShift would otherwise reject unsigned images.
@@ -60,11 +83,17 @@ Before running the setup script, ensure you have the following tools installed:
 
 ### 1. Build the ISO
 
+Set the `VERSION` environment variable to select the OCP version (defaults to 4.22):
+
 ```bash
-./create.sh
+# For OCP 4.22 (default)
+./create_sno_iso.sh
+
+# For OCP 5.0
+VERSION=5.0 ./create_sno_iso.sh
 ```
 
-The script downloads the OpenShift installer and RHCOS live ISO (if needed), transpiles Butane configs, and embeds the ignition configuration.
+The VERSION variable controls which OpenShift installer, RHCOS build, and custom NVIDIA node image the script will use.
 
 ### 2. Deploy
 
@@ -89,7 +118,9 @@ The deployment process involves three boot phases:
 
 1. Select the RHCOS installation from the boot menu
    - You should see 2 OSTree deployments available
-2. Wait for the cluster to become ready (~18-20 minutes)
+2. Wait for the cluster to become ready
+   - **OCP 4.22**: ~18-20 minutes
+   - **OCP 5.0**: ~30-40 minutes (see note below)
 
 #### Accessing the Cluster
 
@@ -204,15 +235,111 @@ storage                                    4.22.0-rc.5   True        False      
 
 ```
 
-All operators should show `AVAILABLE=True` and `DEGRADED=False`. The monitoring operator may show `PROGRESSING=True` initially while rolling out, after chaning to the rigth kubeconfig, it should be also ok.
+All operators should show `AVAILABLE=True` and `DEGRADED=False`. The monitoring operator may show `PROGRESSING=True` initially while rolling out, after changing to the right kubeconfig, it should be also ok.
 
-## Configuration Files
+### OCP 5.0 Initialization Behavior
 
-- **`create.sh`** - Main automation script for ISO creation
+**Note for OCP 5.0 deployments:** The cluster initialization takes significantly longer (~30-40 minutes total) compared to OCP 4.22. During the initial phase, you may observe several cluster operators in a degraded or progressing state.
+
+**Initial state (first 10-15 minutes)** - Some operators may show errors:
+
+```bash
+[core@vera-rubin ~]$ oc get co
+NAME                                       VERSION      AVAILABLE   PROGRESSING   DEGRADED   SINCE   MESSAGE
+authentication                             5.0.0-ec.3   False       False         True       10m     APIServicesAvailable: ...bad status...401
+etcd                                                    False       True          False      10m     StaticPodsAvailable: 0 nodes are active; 1 node is at revision 0...
+kube-apiserver                                          False       True          False      11m     StaticPodsAvailable: 0 nodes are active; 1 node is at revision 0...
+ingress                                    5.0.0-ec.3   True        True          False      10m     IngressControllerProgressing: Waiting for router deployment...
+monitoring                                              Unknown     True          Unknown    9m42s   Rolling out the stack.
+operator-lifecycle-manager-packageserver                False       True          False      10m     ClusterServiceVersion...phase Failed...InstallCheckFailed...install timeout
+...
+```
+
+**Be patient!** The core components (CRI-O, kubelet) are still rolling out the final configuration. Monitor the cluster operators with `watch oc get co` and wait for all operators to stabilize.
+
+**Expected final state (after 30-40 minutes)** - All operators healthy:
+
+```bash
+core@vera-rubin ~]$ oc get co
+NAME                                       VERSION      AVAILABLE   PROGRESSING   DEGRADED   SINCE   MESSAGE
+authentication                             5.0.0-ec.3   True        False         False      2m19s
+baremetal                                  5.0.0-ec.3   True        False         False      28m
+cloud-controller-manager                   5.0.0-ec.3   True        False         False      28m
+cloud-credential                           5.0.0-ec.3   True        False         False      49m
+cluster-api                                5.0.0-ec.3   True        False         False      28m
+cluster-autoscaler                         5.0.0-ec.3   True        False         False      28m
+config-operator                            5.0.0-ec.3   True        False         False      28m
+console                                    5.0.0-ec.3   True        False         False      2m26s
+control-plane-machine-set                  5.0.0-ec.3   True        False         False      28m
+csi-snapshot-controller                    5.0.0-ec.3   True        False         False      29m
+dns                                        5.0.0-ec.3   True        False         False      28m
+etcd                                       5.0.0-ec.3   True        False         False      18m
+image-registry                             5.0.0-ec.3   True        False         False      9m49s
+ingress                                    5.0.0-ec.3   True        False         False      29m
+insights                                   5.0.0-ec.3   True        False         False      28m
+kube-apiserver                             5.0.0-ec.3   True        False         False      10m
+kube-controller-manager                    5.0.0-ec.3   True        False         False      9m47s
+kube-scheduler                             5.0.0-ec.3   True        False         False      21m
+kube-storage-version-migrator              5.0.0-ec.3   True        False         False      29m
+machine-api                                5.0.0-ec.3   True        False         False      23m
+machine-approver                           5.0.0-ec.3   True        False         False      28m
+machine-config                             5.0.0-ec.3   True        False         False      22m
+marketplace                                5.0.0-ec.3   True        False         False      28m
+monitoring                                 5.0.0-ec.3   True        False         False      67s
+network                                    5.0.0-ec.3   True        False         False      29m
+node-tuning                                5.0.0-ec.3   True        False         False      23m
+olm                                        5.0.0-ec.3   True        False         False      28m
+openshift-apiserver                        5.0.0-ec.3   True        False         False      7m42s
+openshift-controller-manager               5.0.0-ec.3   True        False         False      9m44s
+openshift-samples                          5.0.0-ec.3   True        False         False      11m
+operator-lifecycle-manager                 5.0.0-ec.3   True        False         False      29m
+operator-lifecycle-manager-catalog         5.0.0-ec.3   True        False         False      29m
+operator-lifecycle-manager-packageserver   5.0.0-ec.3   True        False         False      11m
+service-ca                                 5.0.0-ec.3   True        False         False      29m
+storage                                    5.0.0-ec.3   True        False         False      28m
+
+[core@vera-rubin ~]$ oc version
+Client Version: 5.0.0-202606220255.p2.g74e525a.assembly.stream-74e525a
+Kustomize Version: v5.7.1
+Kubernetes Version: v1.35.3
+
+[core@vera-rubin ~]$ hostnamectl
+ Static hostname: vera-rubin.nvidia.local
+       Icon name: computer-server
+         Chassis: server 🖳
+      Machine ID: e04b7e84258e4ad98170e523896627d1
+         Boot ID: 2a97323686d24236af5bc83292827e14
+Operating System: Red Hat Enterprise Linux CoreOS 10.2.20260622-0 (Coughlan)
+     CPE OS Name: cpe:/o:redhat:enterprise_linux:10.2
+          Kernel: Linux 6.12.0-231.12.el10nv.aarch64+64k
+    Architecture: arm64
+ Hardware Vendor: NVIDIA
+  Hardware Model: VR NVL72
+Firmware Version: NV_SBIOS: 04.0A.00.00, OEM_SBIOS: 04.0A.00.00
+```
+### Configuration Files
+
+- **`create_sno_iso.sh`** - Main automation script for ISO creation (supports VERSION variable)
 - **`container-policy.bu`** - Butane config for container policy settings
 - **`dnsmasq.bu`** - Butane config for DNS services
 - **`install-config.yaml.template`** - OpenShift installation configuration template
-- **`local_manifests/`** - Custom manifests for cluster configuration
+- **`local_openshift/`** - Custom manifests for cluster configuration
+  - `99-cluster-dns-02-config.yaml` - DNS configuration (common)
+  - `99-master-container-policy.yaml` - Container policy (common)
+  - `99-master-host-network-customizations.yaml` - Network settings (common)
+  - `99-os-layer-custom-4.22.yaml` - Custom OS image for OCP 4.22
+  - `99-os-layer-custom-5.0.yaml` - Custom OS image for OCP 5.0
+
+### Version Selection
+
+The `create_sno_iso.sh` script uses the `VERSION` environment variable to determine which OCP version to build:
+
+| Component | VERSION=4.22 (default) | VERSION=5.0 |
+|-----------|----------------------|-------------|
+| Installer source | OCP stable release | OCP dev-preview latest |
+| RHCOS build | 10.2.20260423-0102 | 10.2.20260617-0101 |
+| Custom image manifest | 99-os-layer-custom-4.22.yaml | 99-os-layer-custom-5.0.yaml |
+| Node image tag | 4.22-10.2-ocp4nv-preview-202605082215-node-image | 5.0-10.2-ocp4nv-202606231810-node-image |
 
 
 ## Known Issues

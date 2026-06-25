@@ -1,14 +1,34 @@
 #!/usr/bin/env bash
 set -xeuo pipefail
 
-OCP_VERSION="4.22.0-rc.2"
-RHCOS_BUILD="10.2.20260423-0102"
+# Set OCP version - default to 4.22, or override with VERSION env var
+# Usage: VERSION=5.0 ./create_sno_iso.sh
+VERSION="${VERSION:-4.22}"
+
+case "${VERSION}" in
+  "4.22")
+    OCP_VERSION="4.22.0-rc.2"
+    RHCOS_BUILD="10.2.20260423-0102"
+    INSTALLER_URL="https://mirror.openshift.com/pub/openshift-v4/aarch64/clients/ocp/${OCP_VERSION}/openshift-install-linux.tar.gz"
+    ;;
+  "5.0")
+    OCP_VERSION="5.0"
+    RHCOS_BUILD="10.2.20260617-0101"
+    INSTALLER_URL="https://mirror.openshift.com/pub/openshift-v4/aarch64/clients/ocp-dev-preview/latest/openshift-install-linux.tar.gz"
+    ;;
+  *)
+    echo "Error: Unsupported VERSION=${VERSION}. Supported versions: 4.22, 5.0"
+    exit 1
+    ;;
+esac
+
+echo "Building for OCP ${VERSION} with RHCOS ${RHCOS_BUILD}"
+
 RHCOS_ISO="rhcos-${RHCOS_BUILD}-live-iso.aarch64.iso"
 
 
 if [[ ! -x ./openshift-install ]]; then
-    curl -LO \
-      "https://mirror.openshift.com/pub/openshift-v4/aarch64/clients/ocp/${OCP_VERSION}/openshift-install-linux.tar.gz"
+    curl -LO "${INSTALLER_URL}"
     tar -xzf openshift-install-linux.tar.gz
     chmod +x openshift-install
 fi
@@ -32,7 +52,13 @@ cp install-config.yaml ocp/
 
 ./openshift-install create manifests --dir ocp/
 
-cp local_openshift/* ocp/openshift/
+# Copy common manifests
+cp local_openshift/99-cluster-dns-02-config.yaml ocp/openshift/
+cp local_openshift/99-master-container-policy.yaml ocp/openshift/
+cp local_openshift/99-master-host-network-customizations.yaml ocp/openshift/
+
+# Copy version-specific os-layer-custom manifest
+cp "local_openshift/99-os-layer-custom-${VERSION}.yaml" ocp/openshift/99-os-layer-custom.yaml
 
 ./openshift-install create single-node-ignition-config --dir ocp/
 
@@ -48,6 +74,3 @@ coreos-installer iso ignition embed \
   -i ocp/bootstrap-in-place-for-live-iso.ign \
   "${RHCOS_ISO}" \
   -o "${ISO_NAME}"
-
-scp "${ISO_NAME}" \
-  root@10.8.2.218:/srv/nfs/iso/"${ISO_NAME}"
