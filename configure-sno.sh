@@ -38,24 +38,6 @@ HOSTNAME=${HOSTNAME:-vera-rubin}
 read -p "Domain [nvidia.local]: " DOMAIN
 DOMAIN=${DOMAIN:-nvidia.local}
 
-# SSH Keys - check if ssh.pub exists first
-if [ -f "ssh.pub" ]; then
-    SSH_KEY=$(cat ssh.pub | tr -d '\n\r')
-    echo "Using SSH key from ssh.pub"
-else
-    read -p "SSH public key (or path to file): " SSH_KEY_INPUT
-    if [ -f "$SSH_KEY_INPUT" ]; then
-        SSH_KEY=$(cat "$SSH_KEY_INPUT" | tr -d '\n\r')
-    else
-        SSH_KEY="$SSH_KEY_INPUT"
-    fi
-fi
-
-# Password hash (optional, provides default)
-DEFAULT_PASSWORD_HASH="\$6\$jamyHU6tcWovxP.e\$rasKzY7tDn.LlazCF6Z4osY86aaXGEFOnkDSClPCw1B/DzPn2knv/kHCwncynti2r3k8MSLwcEsyEwqkDwZd8/"
-read -p "Password hash (press Enter for default 'redhat'): " PASSWORD_HASH
-PASSWORD_HASH=${PASSWORD_HASH:-$DEFAULT_PASSWORD_HASH}
-
 # Calculate network CIDR for machineNetwork
 # Properly calculate network address for any subnet mask
 IFS='.' read -ra IP_PARTS <<< "$IP_ADDRESS"
@@ -196,13 +178,11 @@ echo "  - Updating local_openshift/99-master-host-network-customizations.yaml...
 
 # Escape special characters for sed
 FULL_HOSTNAME_ESC=$(escape_sed "$FULL_HOSTNAME")
-PASSWORD_HASH_ESC=$(escape_sed "$PASSWORD_HASH")
 NETWORK_BASE64_ESC=$(escape_sed "$NETWORK_BASE64")
 DNSMASQ_BASE64_ESC=$(escape_sed "$DNSMASQ_BASE64")
 INTERFACE_ESC=$(escape_sed "$INTERFACE")
 
 sed -i.bak \
-    -e "s|passwordHash: .*|passwordHash: \"${PASSWORD_HASH_ESC}\"|" \
     -e "s|source: data:,.*nvidia.local|source: data:,${FULL_HOSTNAME_ESC}|" \
     -e "s|path: /etc/NetworkManager/system-connections/.*.nmconnection|path: /etc/NetworkManager/system-connections/${INTERFACE_ESC}.nmconnection|" \
     -e "s|source: data:;base64,.*|source: data:;base64,${NETWORK_BASE64_ESC}|" \
@@ -230,6 +210,6 @@ echo "  - local_openshift/99-cluster-dns-02-config.yaml"
 echo "  - local_openshift/99-master-host-network-customizations.yaml"
 echo ""
 echo "Next steps:"
-echo "  1. Verify ssh.pub and pull-secret.json files exist"
+echo "  1. Ensure ssh.pub and pull-secret.json files exist in this directory"
 echo "  2. Run: VERSION=5.0 ./create_sno_iso.sh"
 echo ""
