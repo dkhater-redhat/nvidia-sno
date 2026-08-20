@@ -21,22 +21,22 @@ storage:
       overwrite: true
       contents:
         inline: vera-rubin.nvidia.local
-    - path: /etc/NetworkManager/system-connections/enP13s20f0np0.nmconnection
+    - path: /etc/NetworkManager/system-connections/enP5p65s0f0np0.nmconnection
       mode: 0600
       overwrite: true
       contents:
         inline: |
           [connection]
-          id=enP13s20f0np0
+          id=enP5p65s0f0np0
           type=ethernet
-          interface-name=enP13s20f0np0
+          interface-name=enP5p65s0f0np0
           autoconnect=true
 
           [ipv4]
           method=manual
-          addresses=10.78.214.40/27
-          gateway=10.78.214.33
-          dns=10.78.214.62;103.247.36.36
+          addresses=10.28.128.22/28
+          gateway=10.28.128.17
+          dns=103.247.36.36;8.8.8.8
 
     - path: /etc/NetworkManager/dnsmasq.d/ocp-sno.conf
       mode: 0644
@@ -44,13 +44,13 @@ storage:
       contents:
         inline: |
           local=/vera-rubin.nvidia.local/
-          address=/api.vera-rubin.nvidia.local/10.78.214.40
-          address=/api-int.vera-rubin.nvidia.local/10.78.214.40
-          address=/apps.vera-rubin.nvidia.local/10.78.214.40
+          address=/api.vera-rubin.nvidia.local/10.28.128.22
+          address=/api-int.vera-rubin.nvidia.local/10.28.128.22
+          address=/apps.vera-rubin.nvidia.local/10.28.128.22
           listen-address=127.0.0.1
-          listen-address=10.78.214.40
+          listen-address=10.28.128.22
           cache-size=1000
-          server=10.78.214.62
+          server=103.247.36.36
           server=8.8.8.8
 
     - path: /etc/NetworkManager/conf.d/dnsmasq.conf

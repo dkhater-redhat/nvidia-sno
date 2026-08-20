@@ -38,6 +38,24 @@ HOSTNAME=${HOSTNAME:-vera-rubin}
 read -p "Domain [nvidia.local]: " DOMAIN
 DOMAIN=${DOMAIN:-nvidia.local}
 
+# SSH Keys - check if ssh.pub exists first
+if [ -f "ssh.pub" ]; then
+    SSH_KEY=$(cat ssh.pub | tr -d '\n\r')
+    echo "Using SSH key from ssh.pub"
+else
+    read -p "SSH public key (or path to file): " SSH_KEY_INPUT
+    if [ -f "$SSH_KEY_INPUT" ]; then
+        SSH_KEY=$(cat "$SSH_KEY_INPUT" | tr -d '\n\r')
+    else
+        SSH_KEY="$SSH_KEY_INPUT"
+    fi
+fi
+
+# Password hash (optional, provides default)
+DEFAULT_PASSWORD_HASH="\$6\$jamyHU6tcWovxP.e\$rasKzY7tDn.LlazCF6Z4osY86aaXGEFOnkDSClPCw1B/DzPn2knv/kHCwncynti2r3k8MSLwcEsyEwqkDwZd8/"
+read -p "Password hash (press Enter for default 'redhat'): " PASSWORD_HASH
+PASSWORD_HASH=${PASSWORD_HASH:-$DEFAULT_PASSWORD_HASH}
+
 # Calculate network CIDR for machineNetwork
 # Properly calculate network address for any subnet mask
 IFS='.' read -ra IP_PARTS <<< "$IP_ADDRESS"
@@ -91,137 +109,55 @@ fi
 echo ""
 echo "Updating configuration files..."
 
-# Update dnsmasq.bu
+# Helper function to escape strings for sed
+escape_sed() {
+    echo "$1" | sed -e 's/[\/&]/\\&/g' -e 's/\$/\\$/g'
+}
+
+# Update dnsmasq.bu using sed
 echo "  - Updating dnsmasq.bu..."
-cat > dnsmasq.bu << EOF
-variant: fcos
-version: 1.5.0
+sed -i.bak \
+    -e "s/inline: .*/inline: ${FULL_HOSTNAME}/" \
+    -e "s/id=.*/id=${INTERFACE}/" \
+    -e "s/interface-name=.*/interface-name=${INTERFACE}/" \
+    -e "s/addresses=.*/addresses=${IP_ADDRESS}\/${SUBNET_MASK}/" \
+    -e "s/gateway=.*/gateway=${GATEWAY}/" \
+    -e "s/dns=.*/dns=${DNS_PRIMARY};${DNS_SECONDARY}/" \
+    -e "s|local=/.*|local=/${FULL_HOSTNAME}/|" \
+    -e "s|address=/api\..*|address=/api.${FULL_HOSTNAME}/${IP_ADDRESS}|" \
+    -e "s|address=/api-int\..*|address=/api-int.${FULL_HOSTNAME}/${IP_ADDRESS}|" \
+    -e "s|address=/apps\..*|address=/apps.${FULL_HOSTNAME}/${IP_ADDRESS}|" \
+    -e "s|listen-address=${IP_ADDRESS}.*|listen-address=${IP_ADDRESS}|" \
+    -e "/server=/d" \
+    dnsmasq.bu
 
-ignition:
-  config:
-    merge:
-      - local: bootstrap-in-place-for-live-iso.ign
+# Add server lines back
+sed -i.bak2 \
+    "/listen-address=127.0.0.1/a\\
+          server=${DNS_PRIMARY}\\
+          server=${DNS_SECONDARY}" \
+    dnsmasq.bu
 
-passwd:
-  users:
-    - name: core
-      password_hash: "\$6\$jamyHU6tcWovxP.e\$rasKzY7tDn.LlazCF6Z4osY86aaXGEFOnkDSClPCw1B/DzPn2knv/kHCwncynti2r3k8MSLwcEsyEwqkDwZd8/"
-      ssh_authorized_keys:
-        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN7zgvPt+AVZF06sA0jRY6MByNyytlGsMn6z+KMjjX7/ dkhater@redhat.com-sno
-        - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDgBv89yZuWD1AfOi+3CGI7FWawpwYQVrxLCjfxPnP7KjEGGAHGsorce5XGNu1W57ND8HrdLyQf4SLfHAwVyRvRfIf8NzakUuxR4khHCpxE+F8ByTyg23Y17DkfBM/RCXcdMU1vvDkfCdsVMOY8KKhLL412560KfxQhQBKsCmssMZQ4Ii5b18cJfbwk+JnNC0fRiV/h2qrOsRQ7XvJynHHxMfqfih3BLnVo83FSf3G7T9LwpS7BQK4BsO14ahztMXxkU7j+ZdRd3+gUK3L9E0Y/fdtrMXgnG6OphkFEGTY7hlpV9Ppr7t5mDDl6LPMDWpWaZ0xz61IqKbrjXVPv63xF ravanelli@renatas-air.br.ibm.com
+rm -f dnsmasq.bu.bak dnsmasq.bu.bak2
 
-storage:
-  files:
-    - path: /etc/hostname
-      mode: 0644
-      overwrite: true
-      contents:
-        inline: ${FULL_HOSTNAME}
-    - path: /etc/NetworkManager/system-connections/${INTERFACE}.nmconnection
-      mode: 0600
-      overwrite: true
-      contents:
-        inline: |
-          [connection]
-          id=${INTERFACE}
-          type=ethernet
-          interface-name=${INTERFACE}
-          autoconnect=true
-
-          [ipv4]
-          method=manual
-          addresses=${IP_ADDRESS}/${SUBNET_MASK}
-          gateway=${GATEWAY}
-          dns=${DNS_PRIMARY};${DNS_SECONDARY}
-
-    - path: /etc/NetworkManager/dnsmasq.d/ocp-sno.conf
-      mode: 0644
-      overwrite: true
-      contents:
-        inline: |
-          local=/${FULL_HOSTNAME}/
-          address=/api.${FULL_HOSTNAME}/${IP_ADDRESS}
-          address=/api-int.${FULL_HOSTNAME}/${IP_ADDRESS}
-          address=/apps.${FULL_HOSTNAME}/${IP_ADDRESS}
-          listen-address=127.0.0.1
-          listen-address=${IP_ADDRESS}
-          cache-size=1000
-          server=${DNS_PRIMARY}
-          server=${DNS_SECONDARY}
-
-    - path: /etc/NetworkManager/conf.d/dnsmasq.conf
-      mode: 0644
-      overwrite: true
-      contents:
-        inline: |
-          [main]
-          dns=dnsmasq
-
-    - path: /etc/ssh/sshd_config.d/01-password-auth.conf
-      mode: 0644
-      overwrite: true
-      contents:
-        inline: |
-          PasswordAuthentication yes
-
-systemd:
-  units:
-    - name: dnsmasq.service
-      enabled: false
-      mask: true
-EOF
-
-# Update install-config.yaml.template
+# Update install-config.yaml.template using sed
 echo "  - Updating install-config.yaml.template..."
-cat > install-config.yaml.template << EOF
-apiVersion: v1
-baseDomain: ${DOMAIN}
-compute:
-- name: worker
-  replicas: 0
-controlPlane:
-  name: master
-  replicas: 1
-metadata:
-  name: ${HOSTNAME}
-networking:
-  clusterNetwork:
-  - cidr: 10.128.0.0/14
-    hostPrefix: 23
-  machineNetwork:
-  - cidr:  ${NETWORK_CIDR}
-  networkType: OVNKubernetes
-  serviceNetwork:
-  - 172.30.0.0/16
-platform:
-  none: {}
-bootstrapInPlace:
-  installationDisk: /dev/disk/by-id/${DISK_ID}
-osImageStream: "rhel-10"
-featureSet: TechPreviewNoUpgrade
-pullSecret: |
-  \${PULL_SECRET}
-sshKey: |
-  \${SSH_KEY}
-EOF
+sed -i.bak \
+    -e "s/baseDomain: .*/baseDomain: ${DOMAIN}/" \
+    -e "s/  name: .*/  name: ${HOSTNAME}/" \
+    -e "s|- cidr: .*|- cidr:  ${NETWORK_CIDR}|" \
+    -e "s|installationDisk: .*|installationDisk: /dev/disk/by-id/${DISK_ID}|" \
+    install-config.yaml.template
+rm -f install-config.yaml.template.bak
 
-# Update 99-cluster-dns-02-config.yaml
+# Update 99-cluster-dns-02-config.yaml using sed
 echo "  - Updating local_openshift/99-cluster-dns-02-config.yaml..."
-cat > local_openshift/99-cluster-dns-02-config.yaml << EOF
-apiVersion: operator.openshift.io/v1
-kind: DNS
-metadata:
-  name: default
-spec:
-  upstreamResolvers:
-    policy: Sequential
-    upstreams:
-    - type: Network
-      address: ${IP_ADDRESS}
-      port: 53
-EOF
+sed -i.bak \
+    -e "s/address: .*/address: ${IP_ADDRESS}/" \
+    local_openshift/99-cluster-dns-02-config.yaml
+rm -f local_openshift/99-cluster-dns-02-config.yaml.bak
 
-# Create temporary network and dnsmasq configs
+# Create temporary network and dnsmasq configs for base64 encoding
 echo "  - Creating base64-encoded configs..."
 mkdir -p /tmp/sno-config-$$
 
@@ -255,89 +191,29 @@ EOF
 NETWORK_BASE64=$(cat /tmp/sno-config-$$/network.txt | gzip -c | base64)
 DNSMASQ_BASE64=$(cat /tmp/sno-config-$$/dnsmasq.txt | gzip -c | base64)
 
-# Update 99-master-host-network-customizations.yaml
+# Update 99-master-host-network-customizations.yaml using sed
 echo "  - Updating local_openshift/99-master-host-network-customizations.yaml..."
-cat > local_openshift/99-master-host-network-customizations.yaml << EOF
-apiVersion: machineconfiguration.openshift.io/v1
-kind: MachineConfig
-metadata:
-  labels:
-    machineconfiguration.openshift.io/role: master
-  name: 99-master-host-network-customizations
-spec:
-  config:
-    ignition:
-      version: 3.4.0
-    passwd:
-      users:
-        - name: core
-          passwordHash: "\$6\$jamyHU6tcWovxP.e\$rasKzY7tDn.LlazCF6Z4osY86aaXGEFOnkDSClPCw1B/DzPn2knv/kHCwncynti2r3k8MSLwcEsyEwqkDwZd8/"
-    storage:
-      files:
 
+# Escape special characters for sed
+FULL_HOSTNAME_ESC=$(escape_sed "$FULL_HOSTNAME")
+PASSWORD_HASH_ESC=$(escape_sed "$PASSWORD_HASH")
+NETWORK_BASE64_ESC=$(escape_sed "$NETWORK_BASE64")
+DNSMASQ_BASE64_ESC=$(escape_sed "$DNSMASQ_BASE64")
+INTERFACE_ESC=$(escape_sed "$INTERFACE")
 
-        -  path: /etc/hostname
-           overwrite: true
-           mode: 420
-           contents:
-             source: data:,${FULL_HOSTNAME}
+sed -i.bak \
+    -e "s|passwordHash: .*|passwordHash: \"${PASSWORD_HASH_ESC}\"|" \
+    -e "s|source: data:,.*nvidia.local|source: data:,${FULL_HOSTNAME_ESC}|" \
+    -e "s|path: /etc/NetworkManager/system-connections/.*.nmconnection|path: /etc/NetworkManager/system-connections/${INTERFACE_ESC}.nmconnection|" \
+    -e "s|source: data:;base64,.*|source: data:;base64,${NETWORK_BASE64_ESC}|" \
+    local_openshift/99-master-host-network-customizations.yaml
 
+# Update the dnsmasq base64 (line after "path: /etc/NetworkManager/dnsmasq.d/ocp-sno.conf")
+sed -i.bak2 \
+    "/path: \/etc\/NetworkManager\/dnsmasq.d\/ocp-sno.conf/,/source: data:;base64,/ s|source: data:;base64,.*|source: data:;base64,${DNSMASQ_BASE64_ESC}|" \
+    local_openshift/99-master-host-network-customizations.yaml
 
-        - path: /etc/NetworkManager/system-connections/${INTERFACE}.nmconnection
-          overwrite: true
-          mode:  0600
-          contents:
-            compression: gzip
-            source: data:;base64,${NETWORK_BASE64}
-
-        - path: /etc/NetworkManager/dnsmasq.d/ocp-sno.conf
-          overwrite: true
-          mode: 420
-          contents:
-            compression: gzip
-            source: data:;base64,${DNSMASQ_BASE64}
-
-        - path: /etc/NetworkManager/conf.d/dnsmasq.conf
-          overwrite: true
-          mode: 420
-          contents:
-            source: data:,%5Bmain%5D%0Adns%3Ddnsmasq%0A
-
-        - path: /etc/ssh/sshd_config.d/01-password-auth.conf
-          overwrite: true
-          mode: 420
-          contents:
-            source: data:,PasswordAuthentication%20yes%0A
-
-    systemd:
-      units:
-        - name: dnsmasq.service
-          enabled: false
-          mask: true
-EOF
-
-# Generate unsigned container policy for Voyager kernel images
-echo "  - Creating local_openshift/99-master-zz-unsigned-policy.yaml..."
-cat > local_openshift/99-master-zz-unsigned-policy.yaml << 'EOF'
-apiVersion: machineconfiguration.openshift.io/v1
-kind: MachineConfig
-metadata:
-  labels:
-    machineconfiguration.openshift.io/role: master
-  name: 99-master-zz-unsigned-policy
-spec:
-  config:
-    ignition:
-      version: 3.4.0
-    storage:
-      files:
-        - path: /etc/containers/policy.json
-          mode: 420
-          overwrite: true
-          contents:
-            compression: gzip
-            source: data:;base64,H4sIAKFBf2oAA6tWUOBSAAGllNS0xNKcEiUrhehqpZLKglQgSykzrzg1ubQo1TE5ObWgxDGvsiQjMy9dqTZWB6qrpCgxr7ggv6ikGKi8GiIIFE4syc/NTAYJKRFpYK0OXHNKfnJ2ahFFmnVTElNz8/NIMgMWErVcYAIAiEOd/BoBAAA=
-EOF
+rm -f local_openshift/99-master-host-network-customizations.yaml.bak*
 
 # Clean up temp files
 rm -rf /tmp/sno-config-$$
@@ -352,10 +228,8 @@ echo "  - dnsmasq.bu"
 echo "  - install-config.yaml.template"
 echo "  - local_openshift/99-cluster-dns-02-config.yaml"
 echo "  - local_openshift/99-master-host-network-customizations.yaml"
-echo "  - local_openshift/99-master-zz-unsigned-policy.yaml (CRITICAL for unsigned Voyager images)"
 echo ""
 echo "Next steps:"
 echo "  1. Verify ssh.pub and pull-secret.json files exist"
-echo "  2. Copy this directory to the Fedora VM"
-echo "  3. Run: VERSION=5.0 ./create_sno_iso.sh"
+echo "  2. Run: VERSION=5.0 ./create_sno_iso.sh"
 echo ""
