@@ -2,25 +2,25 @@ apiVersion: v1
 baseDomain: nvidia.local
 compute:
 - name: worker
-  replicas: 0 
+  replicas: 0
 controlPlane:
   name: master
-  replicas: 1 
+  replicas: 1
 metadata:
   name: vera-rubin
-networking: 
+networking:
   clusterNetwork:
   - cidr: 10.128.0.0/14
     hostPrefix: 23
   machineNetwork:
-  - cidr:  10.78.214.0/27
+  - cidr:  10.28.128.16/28
   networkType: OVNKubernetes
   serviceNetwork:
   - 172.30.0.0/16
 platform:
   none: {}
 bootstrapInPlace:
-  installationDisk: /dev/disk/by-id/nvme-eui.3755533059c001930025384700000001
+  installationDisk: /dev/disk/by-id/nvme-eui.385348304c3072860025384700000001
 osImageStream: "rhel-10"
 featureSet: TechPreviewNoUpgrade
 pullSecret: |

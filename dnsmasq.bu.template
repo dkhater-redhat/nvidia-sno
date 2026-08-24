@@ -20,38 +20,38 @@ storage:
       mode: 0644
       overwrite: true
       contents:
-        inline: vera-rubin.nvidia.local
-    - path: /etc/NetworkManager/system-connections/enP13s20f0np0.nmconnection
+        inline: ${FULL_HOSTNAME}
+    - path: /etc/NetworkManager/system-connections/${INTERFACE}.nmconnection
       mode: 0600
       overwrite: true
       contents:
         inline: |
           [connection]
-          id=enP13s20f0np0
+          id=${INTERFACE}
           type=ethernet
-          interface-name=enP13s20f0np0
+          interface-name=${INTERFACE}
           autoconnect=true
 
           [ipv4]
           method=manual
-          addresses=10.78.214.40/27
-          gateway=10.78.214.33
-          dns=10.78.214.62;103.247.36.36
+          addresses=${IP_ADDRESS}/${SUBNET_MASK}
+          gateway=${GATEWAY}
+          dns=${DNS_PRIMARY};${DNS_SECONDARY}
 
     - path: /etc/NetworkManager/dnsmasq.d/ocp-sno.conf
       mode: 0644
       overwrite: true
       contents:
         inline: |
-          local=/vera-rubin.nvidia.local/
-          address=/api.vera-rubin.nvidia.local/10.78.214.40
-          address=/api-int.vera-rubin.nvidia.local/10.78.214.40
-          address=/apps.vera-rubin.nvidia.local/10.78.214.40
+          local=/${FULL_HOSTNAME}/
+          address=/api.${FULL_HOSTNAME}/${IP_ADDRESS}
+          address=/api-int.${FULL_HOSTNAME}/${IP_ADDRESS}
+          address=/apps.${FULL_HOSTNAME}/${IP_ADDRESS}
           listen-address=127.0.0.1
-          listen-address=10.78.214.40
+          listen-address=${IP_ADDRESS}
           cache-size=1000
-          server=10.78.214.62
-          server=8.8.8.8
+          server=${DNS_PRIMARY}
+          server=${DNS_SECONDARY}
 
     - path: /etc/NetworkManager/conf.d/dnsmasq.conf
       mode: 0644

@@ -12,9 +12,9 @@ case "${VERSION}" in
     INSTALLER_URL="https://mirror.openshift.com/pub/openshift-v4/aarch64/clients/ocp/${OCP_VERSION}/openshift-install-linux.tar.gz"
     ;;
   "5.0")
-    OCP_VERSION="5.0"
+    OCP_VERSION="5.0.0-ec.4"
     RHCOS_BUILD="10.2.20260617-0101"
-    INSTALLER_URL="https://mirror.openshift.com/pub/openshift-v4/aarch64/clients/ocp-dev-preview/latest/openshift-install-linux.tar.gz"
+    INSTALLER_URL="https://mirror.openshift.com/pub/openshift-v4/aarch64/clients/ocp-dev-preview/${OCP_VERSION}/openshift-install-linux.tar.gz"
     ;;
   *)
     echo "Error: Unsupported VERSION=${VERSION}. Supported versions: 4.22, 5.0"
@@ -52,9 +52,12 @@ cp install-config.yaml ocp/
 
 ./openshift-install create manifests --dir ocp/
 
+# Generate 99-master-zz-unsigned-policy.yaml from Butane file
+butane --pretty --strict 99-master-zz-unsigned-policy.bu -o local_openshift/99-master-zz-unsigned-policy.yaml
+
 # Copy common manifests
 cp local_openshift/99-cluster-dns-02-config.yaml ocp/openshift/
-cp local_openshift/99-master-container-policy.yaml ocp/openshift/
+cp local_openshift/99-master-zz-unsigned-policy.yaml ocp/openshift/
 cp local_openshift/99-master-host-network-customizations.yaml ocp/openshift/
 
 # Copy version-specific os-layer-custom manifest

@@ -1,0 +1,29 @@
+variant: openshift
+version: 4.14.0
+metadata:
+  name: 99-master-zz-unsigned-policy
+  labels:
+    machineconfiguration.openshift.io/role: master
+storage:
+  files:
+    - path: /etc/containers/policy.json
+      mode: 0644
+      overwrite: true
+      contents:
+        inline: |
+          {
+            "default": [
+              {
+                "type": "insecureAcceptAnything"
+              }
+            ],
+            "transports": {
+              "docker-daemon": {
+                "": [
+                  {
+                    "type": "insecureAcceptAnything"
+                  }
+                ]
+              }
+            }
+          }
