@@ -6,7 +6,7 @@ This repository contains automation scripts to create a bootable live ISO for Re
 
 The project automates the creation of a customized RHCOS live ISO for a single node that includes:
 - **OpenShift Container Platform** 4.22 or 5.0 (configurable via VERSION variable)
-- **RHCOS** RHEL-10.2 based builds
+- **RHCOS** RHEL-10.2 based builds with NVIDIA Voyager kernel
 - **Container policy** and DNS configuration via Butane
 - **Single Node OpenShift** bootstrap configuration
 
@@ -14,21 +14,21 @@ The project automates the creation of a customized RHCOS live ISO for a single n
 
 | Version | OCP Release | RHCOS Build | Custom Image Tag |
 |---------|-------------|-------------|------------------|
-| 4.22 (default) | 4.22.0-rc.2 | 10.2.20260423-0102 | 4.22-10.2-ocp4nv-preview-202606222115-node-image |
-| 5.0 | Latest dev-preview | 10.2.20260617-0101 | 5.0-10.2-ocp4nv-202606231810-node-image |
+| 4.22 (default) | 4.22.0-rc.2 | 10.2.20260617-0101 | 4.22-10.2-ocp4nv-preview-202606222115-node-image |
+| 5.0 | 5.0.0-ec.4 | 10.2.20260617-0101 | 5.0-10.2-ocp4nv-202606231810-node-image |
 
 ### RHEL-10 Configuration
 
-The OCP 4.22 installer defaults to RHEL-9 base images, RHEL-10 is available stating in 4.23/5.0 .This project overrides the default to use RHEL-10 by setting the following in `install-config.yaml`:
+The OCP 4.22 installer defaults to RHEL-9 base images. RHEL-10 is available starting in 4.23/5.0. This project overrides the default to use RHEL-10 by setting the following in `install-config.yaml`:
 
 ```yaml
 osImageStream: "rhel-10"
 featureSet: TechPreviewNoUpgrade
 ```
 
-### Custom OS Image
+### Custom OS Image for NVIDIA Voyager Kernel
 
-A custom node image is specified via version-specific manifests in `local_openshift/`:
+A custom node image with NVIDIA Voyager kernel is specified via version-specific manifests in `local_openshift/`:
 - `99-os-layer-custom-4.22.yaml` - For OCP 4.22
 - `99-os-layer-custom-5.0.yaml` - For OCP 5.0
 
@@ -43,7 +43,7 @@ metadata:
     machineconfiguration.openshift.io/role: master
   name: os-layer-custom
 spec:
-  osImageURL: quay.io/ravanelli/nvidia/node-image:4.22-10.2-ocp4nv-preview-202605082215-node-image
+  osImageURL: quay.io/ravanelli/nvidia/node-image:4.22-10.2-ocp4nv-preview-202606222115-node-image
 ```
 
 Example for OCP 5.0:
@@ -59,8 +59,6 @@ spec:
 ```
 
 **Note:** This uses a personal repository (`quay.io/ravanelli/nvidia`) because the custom image is not yet part of the official OCP payload, and OpenShift would otherwise reject unsigned images.
-
-
 
 ## Prerequisites
 
@@ -79,9 +77,25 @@ Before running the setup script, ensure you have the following tools installed:
    # Download from:
    https://github.com/coreos/coreos-installer/releases
    ```
-## Quick Start
 
-### 1. Build the ISO
+### Required Files
+
+* `ssh.pub` - Your SSH public key for node access
+* `pull-secret.json` - Red Hat pull secret from console.redhat.com
+
+## Deployment Guide
+
+### Step 1: Configure Deployment Files
+
+Run the interactive configuration script:
+
+```bash
+./configure-sno.sh
+```
+
+The script will prompt you for network and system configuration and update all configuration files using targeted sed replacements.
+
+### Step 2: Build the ISO
 
 Set the `VERSION` environment variable to select the OCP version (defaults to 4.22):
 
@@ -93,15 +107,29 @@ Set the `VERSION` environment variable to select the OCP version (defaults to 4.
 VERSION=5.0 ./create_sno_iso.sh
 ```
 
-The VERSION variable controls which OpenShift installer, RHCOS build, and custom NVIDIA node image the script will use.
+**Version Selection:**
 
-### 2. Deploy
+The `VERSION` environment variable controls which OpenShift installer, RHCOS build, and custom NVIDIA node image the script will use:
+
+| Version | OCP Release | RHCOS Build | Custom Image Tag |
+|---------|-------------|-------------|------------------|
+| 4.22 (default) | 4.22.0-rc.2 | 10.2.20260617-0101 | 4.22-10.2-ocp4nv-preview-202606222115-node-image |
+| 5.0 | 5.0.0-ec.4 | 10.2.20260617-0101 | 5.0-10.2-ocp4nv-202606231810-node-image |
+
+The script will:
+* Download openshift-install for the selected OCP version
+* Download RHCOS 10.2 with NVIDIA Voyager kernel
+* Generate manifests and ignition configs (including the appropriate os-layer-custom manifest)
+* Embed ignition into the ISO
+* Create a bootable ISO named `rhcos-xxxxx.iso` (random ID)
+
+### Step 3: Deploy
 
 The deployment process involves three boot phases:
 
 #### Phase 1: Bootstrap (First Boot from ISO)
 
-1. Mount the ISO to your target server and boot from it
+1. Mount the ISO to your target server via BMC virtual media and boot from it
 2. The system will automatically:
    - Apply the ignition configuration
    - Bootstrap OpenShift
@@ -109,8 +137,10 @@ The deployment process involves three boot phases:
 
 #### Phase 2: Machine Config Application (Second Boot)
 
-1. Select the boot device from the hard drive (Samsung)
-2. The Machine Config Operator will:
+1. Unmount the ISO in BMC before reboot
+2. Boot from hard drive (the disk you specified)
+3. Select the RHCOS entry in GRUB
+4. The Machine Config Operator will:
    - Apply the cluster configurations
    - Automatically reboot (no action required)
 
@@ -176,24 +206,11 @@ operator-lifecycle-manager-catalog         4.22.0-rc.5   True        False      
 operator-lifecycle-manager-packageserver   4.22.0-rc.5   True        False         False      6m47s
 service-ca                                 4.22.0-rc.5   True        False         False      17m
 storage                                    4.22.0-rc.5   True        False         False      17m
-
 ```
 
 After the cluster is fully initialized, the bootstrap kubeconfig will stop working. Switch to the permanent kubeconfig:
 
-
- ```bash
-
-ot@vera-rubin core]# oc get co
-error: Missing or incomplete configuration info.  Please point to an existing, complete config file:
-
-
-  1. Via the command-line flag --kubeconfig
-  2. Via the KUBECONFIG environment variable
-  3. In your home directory as ~/.kube/config
-
-To view or setup config directly use the 'config' command.
-
+```bash
 [root@vera-rubin core]# export KUBECONFIG=/etc/kubernetes/static-pod-resources/kube-apiserver-certs/secrets/node-kubeconfigs/lb-int.kubeconfig
 [root@vera-rubin core]# oc get co
 NAME                                       VERSION       AVAILABLE   PROGRESSING   DEGRADED   SINCE   MESSAGE
@@ -232,7 +249,6 @@ operator-lifecycle-manager-catalog         4.22.0-rc.5   True        False      
 operator-lifecycle-manager-packageserver   4.22.0-rc.5   True        False         False      11m
 service-ca                                 4.22.0-rc.5   True        False         False      22m
 storage                                    4.22.0-rc.5   True        False         False      22m
-
 ```
 
 All operators should show `AVAILABLE=True` and `DEGRADED=False`. The monitoring operator may show `PROGRESSING=True` initially while rolling out, after changing to the right kubeconfig, it should be also ok.
@@ -241,106 +257,9 @@ All operators should show `AVAILABLE=True` and `DEGRADED=False`. The monitoring 
 
 **Note for OCP 5.0 deployments:** The cluster initialization takes significantly longer (~30-40 minutes total) compared to OCP 4.22. During the initial phase, you may observe several cluster operators in a degraded or progressing state.
 
-**Initial state (first 10-15 minutes)** - Some operators may show errors:
-
-```bash
-[core@vera-rubin ~]$ oc get co
-NAME                                       VERSION      AVAILABLE   PROGRESSING   DEGRADED   SINCE   MESSAGE
-authentication                             5.0.0-ec.3   False       False         True       10m     APIServicesAvailable: ...bad status...401
-etcd                                                    False       True          False      10m     StaticPodsAvailable: 0 nodes are active; 1 node is at revision 0...
-kube-apiserver                                          False       True          False      11m     StaticPodsAvailable: 0 nodes are active; 1 node is at revision 0...
-ingress                                    5.0.0-ec.3   True        True          False      10m     IngressControllerProgressing: Waiting for router deployment...
-monitoring                                              Unknown     True          Unknown    9m42s   Rolling out the stack.
-operator-lifecycle-manager-packageserver                False       True          False      10m     ClusterServiceVersion...phase Failed...InstallCheckFailed...install timeout
-...
-```
-
 **Be patient!** The core components (CRI-O, kubelet) are still rolling out the final configuration. Monitor the cluster operators with `watch oc get co` and wait for all operators to stabilize.
 
-**Expected final state (after 30-40 minutes)** - All operators healthy:
-
-```bash
-core@vera-rubin ~]$ oc get co
-NAME                                       VERSION      AVAILABLE   PROGRESSING   DEGRADED   SINCE   MESSAGE
-authentication                             5.0.0-ec.3   True        False         False      2m19s
-baremetal                                  5.0.0-ec.3   True        False         False      28m
-cloud-controller-manager                   5.0.0-ec.3   True        False         False      28m
-cloud-credential                           5.0.0-ec.3   True        False         False      49m
-cluster-api                                5.0.0-ec.3   True        False         False      28m
-cluster-autoscaler                         5.0.0-ec.3   True        False         False      28m
-config-operator                            5.0.0-ec.3   True        False         False      28m
-console                                    5.0.0-ec.3   True        False         False      2m26s
-control-plane-machine-set                  5.0.0-ec.3   True        False         False      28m
-csi-snapshot-controller                    5.0.0-ec.3   True        False         False      29m
-dns                                        5.0.0-ec.3   True        False         False      28m
-etcd                                       5.0.0-ec.3   True        False         False      18m
-image-registry                             5.0.0-ec.3   True        False         False      9m49s
-ingress                                    5.0.0-ec.3   True        False         False      29m
-insights                                   5.0.0-ec.3   True        False         False      28m
-kube-apiserver                             5.0.0-ec.3   True        False         False      10m
-kube-controller-manager                    5.0.0-ec.3   True        False         False      9m47s
-kube-scheduler                             5.0.0-ec.3   True        False         False      21m
-kube-storage-version-migrator              5.0.0-ec.3   True        False         False      29m
-machine-api                                5.0.0-ec.3   True        False         False      23m
-machine-approver                           5.0.0-ec.3   True        False         False      28m
-machine-config                             5.0.0-ec.3   True        False         False      22m
-marketplace                                5.0.0-ec.3   True        False         False      28m
-monitoring                                 5.0.0-ec.3   True        False         False      67s
-network                                    5.0.0-ec.3   True        False         False      29m
-node-tuning                                5.0.0-ec.3   True        False         False      23m
-olm                                        5.0.0-ec.3   True        False         False      28m
-openshift-apiserver                        5.0.0-ec.3   True        False         False      7m42s
-openshift-controller-manager               5.0.0-ec.3   True        False         False      9m44s
-openshift-samples                          5.0.0-ec.3   True        False         False      11m
-operator-lifecycle-manager                 5.0.0-ec.3   True        False         False      29m
-operator-lifecycle-manager-catalog         5.0.0-ec.3   True        False         False      29m
-operator-lifecycle-manager-packageserver   5.0.0-ec.3   True        False         False      11m
-service-ca                                 5.0.0-ec.3   True        False         False      29m
-storage                                    5.0.0-ec.3   True        False         False      28m
-
-[core@vera-rubin ~]$ oc version
-Client Version: 5.0.0-202606220255.p2.g74e525a.assembly.stream-74e525a
-Kustomize Version: v5.7.1
-Kubernetes Version: v1.35.3
-
-[core@vera-rubin ~]$ hostnamectl
- Static hostname: vera-rubin.nvidia.local
-       Icon name: computer-server
-         Chassis: server 🖳
-      Machine ID: e04b7e84258e4ad98170e523896627d1
-         Boot ID: 2a97323686d24236af5bc83292827e14
-Operating System: Red Hat Enterprise Linux CoreOS 10.2.20260622-0 (Coughlan)
-     CPE OS Name: cpe:/o:redhat:enterprise_linux:10.2
-          Kernel: Linux 6.12.0-231.12.el10nv.aarch64+64k
-    Architecture: arm64
- Hardware Vendor: NVIDIA
-  Hardware Model: VR NVL72
-Firmware Version: NV_SBIOS: 04.0A.00.00, OEM_SBIOS: 04.0A.00.00
-```
-### Configuration Files
-
-- **`create_sno_iso.sh`** - Main automation script for ISO creation (supports VERSION variable)
-- **`container-policy.bu`** - Butane config for container policy settings
-- **`dnsmasq.bu`** - Butane config for DNS services
-- **`install-config.yaml.template`** - OpenShift installation configuration template
-- **`local_openshift/`** - Custom manifests for cluster configuration
-  - `99-cluster-dns-02-config.yaml` - DNS configuration (common)
-  - `99-master-container-policy.yaml` - Container policy (common)
-  - `99-master-host-network-customizations.yaml` - Network settings (common)
-  - `99-os-layer-custom-4.22.yaml` - Custom OS image for OCP 4.22
-  - `99-os-layer-custom-5.0.yaml` - Custom OS image for OCP 5.0
-
-### Version Selection
-
-The `create_sno_iso.sh` script uses the `VERSION` environment variable to determine which OCP version to build:
-
-| Component | VERSION=4.22 (default) | VERSION=5.0 |
-|-----------|----------------------|-------------|
-| Installer source | OCP stable release | OCP dev-preview latest |
-| RHCOS build | 10.2.20260423-0102 | 10.2.20260617-0101 |
-| Custom image manifest | 99-os-layer-custom-4.22.yaml | 99-os-layer-custom-5.0.yaml |
-| Node image tag | 4.22-10.2-ocp4nv-preview-202605082215-node-image | 5.0-10.2-ocp4nv-202606231810-node-image |
-
+---
 
 ## Known Issues
 
@@ -357,30 +276,193 @@ done
 
 ### 2. BMC Firmware Reboot Bug
 
-A firmware bug prevents successful reboots, causing the system to hang with USB-related errors:
+A firmware bug prevents successful reboots, causing the system to hang with USB-related errors. This issue consistently occurs with the BMC.
 
-```
-UsbSelectConfig: failed to connect driver - Not Found, ignored
-UsbSelectConfig: failed to connect driver - Not Found, ignored
-UsbSelectConfig: failed to connect driver - Not Found, ignored
-UsbMassReadBlocks: UsbBootReadBlocks (Device Error) -> Reset
-UsbBotExecCommand: UsbBotGetStatus (Time out)
-UsbBootExecCmd: Time out to Exec 0x0 Cmd
-UsbBotExecCommand: UsbBotGetStatus (Time out)
-UsbBootExecCmd: Time out to Exec 0x0 Cmd
-UsbMassReadBlocks: UsbBootReadBlocks (Device Error) -> Reset
-UsbMassReadBlocks: UsbBootReadBlocks (Device Error) -> Reset
-```
-
-**Workaround:** This issue consistently occurs with the BMC. When encountered:
+**Workaround:** When encountered:
 1. Restart the BMC
 2. Perform a full server restart
 
 This may need to be done multiple times throughout the deployment process.
 
-## Additional Resources
+---
 
-- [OpenShift Single Node Installation Guide](https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html-single/installing_on_a_single_node/index)
-- [RHCOS Documentation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/architecture/architecture-rhcos)
-- [Butane Configuration Specification](https://coreos.github.io/butane/)
+# Post-Deployment Operations
+
+## Upgrading NVIDIA Voyager Kernel
+
+Check available Voyager kernel releases at:
+https://releases-rhcos--prod-pipeline.apps.int.prod-stable-spoke1-dc-iad2.itup.redhat.com/?stream=prod/streams/rhel-10.2-ocp4nv&arch=aarch64
+
+### Standalone Kernel Upgrade
+
+```bash
+# Example: Upgrade to July 2026 Voyager kernel (6.12.0-250.17)
+cat <<EOF | oc apply -f -
+   apiVersion: machineconfiguration.openshift.io/v1
+   kind: MachineConfig                            
+   metadata:
+     labels:
+       machineconfiguration.openshift.io/role: master
+     name: os-layer-custom
+   spec:
+     osImageURL: quay.io/openshift-release-dev/ocp-v4.0-art-dev:5.0-10.2-ocp4nv-202607211530-node-image
+EOF
+```
+
+```bash
+oc get mcp -w
+```
+
+The node will:
+* Pull the new kernel image
+* Update UPDATING to True
+* Cordone and drain
+* Reboot with the new kernel
+* Show UPDATED: True when complete
+
+## Combined OCP and Kernel Upgrade
+
+You can upgrade both OpenShift and the Voyager kernel in a single reboot.
+
+### Current State Example
+* OCP: 5.0.0-ec.4
+* Kernel: 6.12.0-231.12 (June - 202606231810)
+
+### Target State Example
+* OCP: 5.0.0-ec.5
+* Kernel: 6.12.0-250.17 (July - 202607211530)
+
+### Upgrade Process
+
+**Step 1:** Check available OCP upgrade
+```bash
+oc adm upgrade
+```
+
+**Step 2:** Pause the master MachineConfigPool (prevents immediate reboot)
+```bash
+oc patch mcp master --type merge --patch '{"spec":{"paused":true}}'
+oc get mcp master -o jsonpath='{.spec.paused}'
+```
+Verify it shows `true`
+
+**Step 3:** Update the osImageURL to the new kernel image
+```bash
+oc patch machineconfig os-layer-custom --type merge --patch \
+  '{"spec":{"osImageURL":"quay.io/openshift-release-dev/ocp-v4.0-art-dev:5.0-10.2-ocp4nv-202607211530-node-image"}}'
+```
+
+**Step 4:** Verify the patch
+```bash
+oc get mc os-layer-custom -o yaml | grep osImageURL
+```
+
+**Step 5:** Start the OCP upgrade
+```bash
+oc adm upgrade --to=5.0.0-ec.5 --force --allow-explicit-upgrade --allow-upgrade-with-warnings
+```
+Note: `--force` and `--allow-explicit-upgrade` may be needed for dev preview versions
+
+**Step 6:** Verify the upgrade started
+```bash
+oc get clusterversion
+```
+Should show PROGRESSING: True
+
+**Step 7:** Unpause the master MachineConfigPool (triggers the combined upgrade)
+```bash
+oc patch mcp master --type merge --patch '{"spec":{"paused":false}}'
+oc get mcp master
+```
+
+**Step 8:** Monitor the upgrade progress
+
+Watch MachineConfigPool:
+```bash
+oc get mcp -w
+```
+
+Watch ClusterVersion:
+```bash
+oc get clusterversion -w
+```
+
+Watch cluster operators:
+```bash
+watch oc get co
+```
+
+### Upgrade Timeline
+
+The node will:
+1. Generate a new rendered-master config (combines ec.5 + new kernel)
+2. Cordone and drain the node
+3. Apply both OCP ec.5 updates AND kernel upgrade
+4. Reboot once
+5. Come back with both upgrades applied
+
+Total time: 15-30 minutes with one reboot
+
+### Verification
+
+After upgrade completes:
+
+```bash
+# Verify OCP version
+oc get clusterversion
+
+# Verify all operators
+oc get co
+
+# Verify kernel version
+ssh core@<node-ip> uname -r
+
+# Verify RHCOS image
+ssh core@<node-ip> sudo rpm-ostree status
+```
+
+All cluster operators should show:
+* VERSION: 5.0.0-ec.5 (or your target version)
+* AVAILABLE: True
+* PROGRESSING: False
+* DEGRADED: False
+
+---
+
+## Configuration Files
+
+- **`configure-sno.sh`** - Interactive configuration script (updates existing files via sed)
+- **`create_sno_iso.sh`** - Main automation script for ISO creation (supports VERSION variable)
+- **`dnsmasq.bu`** - Butane config for DNS services
+- **`install-config.yaml.template`** - OpenShift installation configuration template
+- **`local_openshift/`** - Custom manifests for cluster configuration
+  - `99-cluster-dns-02-config.yaml` - DNS configuration
+  - `99-master-zz-unsigned-policy.yaml` - Container policy for unsigned Voyager images
+  - `99-master-host-network-customizations.yaml` - Network settings
+  - `99-os-layer-custom-4.22.yaml` - Custom OS image for OCP 4.22
+  - `99-os-layer-custom-5.0.yaml` - Custom OS image for OCP 5.0
+
+## Appendix: Hardware Verification
+
+If you need to identify hardware specifications before running `configure-sno.sh`, boot into an existing RHEL system on the target node:
+
+```bash
+# Identify network interface
+ip addr
+nmcli device status
+
+# Identify boot disk
+lsblk
+ls -l /dev/disk/by-id/ | grep nvme
+
+# Test network connectivity
+ping -c 3 <gateway-ip>
+ping -c 3 8.8.8.8
+```
+
+Record the following:
+* Network interface name (e.g., enP5p65s0f0np0)
+* IP address, subnet mask (CIDR), and gateway
+* Disk ID (e.g., nvme-eui.385348304c3072860025384700000001)
+* Hostname and domain
 

@@ -3,7 +3,7 @@ kind: MachineConfig
 metadata:
   labels:
     machineconfiguration.openshift.io/role: master
-  name: 99-master-container-policy
+  name: 99-master-zz-unsigned-policy
 spec:
   config:
     ignition:
@@ -15,4 +15,4 @@ spec:
           overwrite: true
           contents:
             compression: gzip
-            source: data:;base64,H4sIAAAAAAAC/4zOMQ7CMAwF0N2n+PIMF8jWc6AOUWKgApwocYeqyt1RI4gY8eDBsv77OwEc5erXp7HDhQBg7xtg27KwAy9aJaxFphAk26Sb3Re9cX9rBMynI8aK15pTscruk8ExhYeUc/TySjrOAA/sF/wb/cLHzKNGo0bvAAAA//8mJjls0QAAAA==
+            source: data:;base64,H4sIAKFBf2oAA6tWUOBSAAGllNS0xNKcEiUrhehqpZLKglQgSykzrzg1ubQo1TE5ObWgxDGvsiQjMy9dqTZWB6qrpCgxr7ggv6ikGKi8GiIIFE4syc/NTAYJKRFpYK0OXHNKfnJ2ahFFmnVTElNz8/NIMgMWErVcYAIAiEOd/BoBAAA=

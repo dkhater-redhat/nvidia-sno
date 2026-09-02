@@ -7,5 +7,5 @@ spec:
     policy: Sequential
     upstreams:
     - type: Network
-      address: 10.28.128.22
+      address: ${IP_ADDRESS}
       port: 53

@@ -23,19 +23,19 @@ spec:
              source: data:,vera-rubin.nvidia.local
 
 
-        - path: /etc/NetworkManager/system-connections/enP13s20f0np0.nmconnection
+        - path: /etc/NetworkManager/system-connections/enP5p65s0f0np0.nmconnection
           overwrite: true
           mode:  0600
           contents:
             compression: gzip
-            source: data:;base64,H4sIAAAAAAAC/1zMPWrEMBBH8X7uEkVf2IGgO6Q3Lgbr71gQj4w0zuLbb7OF2fbx401LFcGipcpMJSfIjwvd29XKYUmvAwm6oQmUiijaygs+hHe8UT61vl5J2wmiqRz/caYdutWcdpaT/4hzbugdPTlrxi/jXTTRfvqRflnx4OvWQ6Asdzj4b2eD8XE0YTBhoGcAAAD//xWJTwC+AAAA
+            source: data:;base64,H4sIAF74hWoAA12MzQrCMBCE7/suxjT9Bck79F56WJqtBuwmJBulb28VDyIzcxk+vmkJzLSIDzyDd5Z4bGPXZr1qjhpkj2RJbpSYBDwLpRUXOjFu9M9ikfC1WUmFACYfH80M2yEIzm7IBe+AziXKmbKttDKDqo4ZczYDXFHoifvPX/Xg+A3WyjS9qrujl0F9Ai/AejAAuwAAAA==
 
         - path: /etc/NetworkManager/dnsmasq.d/ocp-sno.conf
           overwrite: true
           mode: 420
           contents:
             compression: gzip
-            source: data:;base64,H4sIAAAAAAAC/5TLwQrCMAzG8XvfpWlahtulDxPbgIFSRzJ78OmFwWAigpJbvv+v3Qu1HAYreX1cpUMfUoVgH4KjWpXNcqBV4FsVEeYFUpxgwjfhpW9/q9V+I01s4+4PGdMMCAjxYzijQuXG3uTJOSKiM9bBemou6fgtsJ97BQAA///XxOWQIwEAAA==
+            source: data:;base64,H4sIAF74hWoAA5WN0QrCMAxF3/svTdtM3F72MbENGCh1NHMPfr1RGCgiKDeBy705pF4y1Tls3Mn360katE2KENRHERyV0ll1DrQIfLtKEXCCZIv4Rnhp69/Uor8hVXTl5ncy4QjRlD6KVyhTPrNXubHlMTrlbs/MD4CHEYajzR5O8JS7A7qcwR4kAQAA
 
         - path: /etc/NetworkManager/conf.d/dnsmasq.conf
           overwrite: true
