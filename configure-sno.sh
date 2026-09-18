@@ -98,6 +98,11 @@ sed -n '/^storage:/,$ p' /tmp/host-network-customizations.bu >> /tmp/99-master-h
 butane --pretty --strict /tmp/99-master-host-network-customizations.bu -o local_openshift/99-master-host-network-customizations.yaml
 rm -f /tmp/host-network-customizations.bu /tmp/99-master-host-network-customizations.bu
 
+# Generate install-config.yaml from template using envsubst
+# Only substitute configuration variables, leave SSH_KEY and PULL_SECRET for create_sno_iso.sh
+echo "  - Generating install-config.yaml..."
+envsubst '${DOMAIN} ${HOSTNAME} ${NETWORK_CIDR} ${DISK_ID}' < install-config.yaml.template > install-config.yaml
+
 echo ""
 echo "========================================"
 echo "Configuration complete!"
@@ -107,6 +112,7 @@ echo "Generated files:"
 echo "  - dnsmasq.bu (from template)"
 echo "  - local_openshift/99-cluster-dns-02-config.yaml (from template)"
 echo "  - local_openshift/99-master-host-network-customizations.yaml (from dnsmasq.bu via Butane)"
+echo "  - install-config.yaml (from template)"
 echo ""
 echo "Next steps:"
 echo "  1. Ensure ssh.pub and pull-secret.json files exist in this directory"
