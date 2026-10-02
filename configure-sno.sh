@@ -11,8 +11,8 @@ echo ""
 
 # Gather configuration from user (with defaults)
 # Use defaults if user just hits Enter
-read -p "IP address [10.28.128.22]: " IP_ADDRESS
-IP_ADDRESS=${IP_ADDRESS:-10.28.128.22}
+read -p "IP address [10.28.128.21]: " IP_ADDRESS
+IP_ADDRESS=${IP_ADDRESS:-10.28.128.21}
 
 read -p "Subnet mask in CIDR [28]: " SUBNET_MASK
 SUBNET_MASK=${SUBNET_MASK:-28}
@@ -28,8 +28,8 @@ read -p "Secondary DNS: " DNS_SECONDARY
 read -p "Network interface name [enP5p65s0f0np0]: " INTERFACE
 INTERFACE=${INTERFACE:-enP5p65s0f0np0}
 
-read -p "Disk ID [nvme-eui.385348304c3072860025384700000001]: " DISK_ID
-DISK_ID=${DISK_ID:-nvme-eui.385348304c3072860025384700000001}
+read -p "Disk ID [nvme-eui.385348304c3039850025384700000001]: " DISK_ID
+DISK_ID=${DISK_ID:-nvme-eui.385348304c3039850025384700000001}
 
 read -p "Hostname [vera-rubin]: " HOSTNAME
 HOSTNAME=${HOSTNAME:-vera-rubin}
@@ -55,7 +55,8 @@ echo "Hostname: ${FULL_HOSTNAME}"
 echo "Network CIDR: ${NETWORK_CIDR}"
 echo "========================================"
 echo ""
-read -p "Continue with these settings? (y/n): " CONFIRM
+read -p "Continue with these settings? [Y/n]: " CONFIRM
+CONFIRM=${CONFIRM:-Y}
 
 if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
     echo "Aborted."
@@ -98,6 +99,11 @@ sed -n '/^storage:/,$ p' /tmp/host-network-customizations.bu >> /tmp/99-master-h
 butane --pretty --strict /tmp/99-master-host-network-customizations.bu -o local_openshift/99-master-host-network-customizations.yaml
 rm -f /tmp/host-network-customizations.bu /tmp/99-master-host-network-customizations.bu
 
+# Generate install-config.yaml from template using envsubst
+# Only substitute configuration variables, leave SSH_KEY and PULL_SECRET for create_sno_iso.sh
+echo "  - Generating install-config.yaml..."
+envsubst '${DOMAIN} ${HOSTNAME} ${NETWORK_CIDR} ${DISK_ID}' < install-config.yaml.template > install-config.yaml
+
 echo ""
 echo "========================================"
 echo "Configuration complete!"
@@ -107,6 +113,7 @@ echo "Generated files:"
 echo "  - dnsmasq.bu (from template)"
 echo "  - local_openshift/99-cluster-dns-02-config.yaml (from template)"
 echo "  - local_openshift/99-master-host-network-customizations.yaml (from dnsmasq.bu via Butane)"
+echo "  - install-config.yaml (from template)"
 echo ""
 echo "Next steps:"
 echo "  1. Ensure ssh.pub and pull-secret.json files exist in this directory"
